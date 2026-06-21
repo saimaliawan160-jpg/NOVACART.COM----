@@ -1,0 +1,611 @@
+import { useState, useMemo } from "react";
+import { ShoppingCart, Star, X, Search, ChevronLeft, Plus, Minus, Truck, MessageCircle, Package, CheckCircle2 } from "lucide-react";
+
+// ====== CONFIG ======
+const WHATSAPP_NUMBER = "923001234567"; // <-- replace with your real number, no + or 00
+const BRAND = "NeoShop";
+const DELIVERY_CHARGE = 300;
+
+// ====== DATA GENERATION ======
+const CATEGORIES = [
+  { name: "Smart Gadgets", emoji: "📱", items: ["Wireless Earbuds Pro", "Smart Watch X1", "Bluetooth Speaker Mini", "LED Strip Lights", "Portable Power Bank", "Smart Ring Tracker", "Mini Projector", "Phone Camera Lens Kit", "Wireless Charger Pad"] },
+  { name: "Fashion Accessories", emoji: "👜", items: ["Leather Wallet", "Sunglasses Classic", "Steel Wrist Watch", "Crossbody Bag", "Beaded Bracelet Set", "Silk Scarf", "Denim Cap", "Statement Necklace", "Canvas Tote Bag"] },
+  { name: "Beauty Products", emoji: "💄", items: ["Matte Lipstick Set", "Vitamin C Serum", "Hair Straightener", "Facial Roller", "Makeup Brush Set", "Aloe Vera Gel", "Nail Art Kit", "Perfume Mist 50ml", "Charcoal Face Mask"] },
+  { name: "Kitchen Items", emoji: "🍳", items: ["Non-Stick Pan Set", "Electric Kettle", "Spice Jar Organizer", "Manual Coffee Grinder", "Silicone Baking Mat", "Knife Set Pro", "Glass Storage Containers", "Stand Mixer Mini", "Bamboo Cutting Board"] },
+  { name: "Home Decor", emoji: "🏠", items: ["Wall Art Canvas Set", "Ceramic Vase", "Scented Candle Trio", "Throw Pillow Covers", "Fairy Light Curtain", "Macrame Wall Hanging", "Table Runner", "Wooden Photo Frame", "Indoor Plant Pot"] },
+  { name: "Trending Products", emoji: "🔥", items: ["Magnetic Phone Mount", "Posture Corrector", "LED Galaxy Projector", "Mini Handheld Fan", "Reusable Ice Cubes", "Travel Neck Pillow", "Pet Grooming Glove", "Foldable Laundry Basket", "Car Organizer Box"] },
+];
+
+const REVIEW_NAMES = ["Ayesha K.", "Bilal M.", "Sana R.", "Hamza T.", "Fatima S.", "Usman A.", "Zainab N.", "Ahmed F.", "Maria J.", "Omar S."];
+const REVIEW_TEXTS = [
+  "Exactly as described, fast delivery and great quality!",
+  "Really happy with this purchase, would recommend.",
+  "Good value for the price. Packaging was solid.",
+  "Took a few days but worth the wait. Works great.",
+  "Quality exceeded my expectations, ordering again soon.",
+  "Decent product, does what it says.",
+  "My second order from here, never disappointed.",
+  "Nice finish and feels premium for the price.",
+];
+
+function seededRand(seed) {
+  let x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+const PRODUCTS = [];
+let pid = 1;
+CATEGORIES.forEach((cat, ci) => {
+  cat.items.forEach((item, ii) => {
+    const seed = ci * 100 + ii;
+    const price = Math.round((300 + seededRand(seed) * 4500) / 10) * 10;
+    const rating = (3.6 + seededRand(seed + 5) * 1.4).toFixed(1);
+    const reviewCount = Math.floor(8 + seededRand(seed + 9) * 180);
+    const numReviews = 2 + Math.floor(seededRand(seed + 3) * 3);
+    const stopWords = ["pro", "x1", "mini", "set", "kit", "trio", "classic", "mat", "1l", "50ml"];
+    const itemKeywords = item
+      .toLowerCase()
+      .split(" ")
+      .filter((w) => !stopWords.includes(w))
+      .slice(0, 2)
+      .join(",");
+    const imgKeyword = encodeURIComponent(`${itemKeywords},${cat.name.split(" ")[0].toLowerCase()}`);
+    const realImages = {
+      "Wireless Earbuds Pro": [
+        "https://static.markaz.app/pakistan/products/1155-86-551157-product-1.jpg",
+        "https://static.markaz.app/pakistan/products/1155-86-551157-product-2.jpg",
+        "https://static.markaz.app/pakistan/products/1155-86-551157-product-5.jpg",
+      ],
+      "Smart Watch X1": [
+        "https://static.markaz.app/pakistan/products/1518-87-680474-product-1.webp",
+        "https://static.markaz.app/pakistan/products/1518-87-680474-product-2.webp",
+        "https://static.markaz.app/pakistan/products/1518-87-680474-product-3.webp",
+      ],
+      "Bluetooth Speaker Mini": [
+        "https://static.markaz.app/pakistan/products/1518-88-687239-product-1.webp",
+        "https://static.markaz.app/pakistan/products/1518-88-687239-product-2.webp",
+        "https://static.markaz.app/pakistan/products/1518-88-687239-product-3.webp",
+      ],
+      "LED Strip Lights": ["/images/led1.jpg", "/images/led2.jpg", "/images/led3.jpg"],
+      "Portable Power Bank": ["/images/powerbank1.jpg", "/images/powerbank2.jpg", "/images/powerbank3.jpg"],
+      "Smart Ring Tracker": ["/images/ring1.jpg", "/images/ring2.jpg", "/images/ring3.jpg"],
+      "Mini Projector": ["/images/projector1.jpg", "/images/projector2.jpg", "/images/projector3.jpg"],
+      "Phone Camera Lens Kit": ["/images/lens1.jpg", "/images/lens2.jpg", "/images/lens3.jpg"],
+      "Wireless Charger Pad": ["/images/charger1.jpg", "/images/charger2.jpg", "/images/charger3.jpg"],
+      "Leather Wallet": ["/images/wallet1.jpg", "/images/wallet2.jpg", "/images/wallet3.jpg"],
+      "Sunglasses Classic": ["/images/sunglasses1.jpg", "/images/sunglasses2.jpg", "/images/sunglasses3.jpg"],
+      "Steel Wrist Watch": ["/images/steelwatch1.jpg", "/images/steelwatch2.jpg", "/images/steelwatch3.jpg"],
+      "Crossbody Bag": ["/images/bag1.jpg", "/images/bag2.jpg", "/images/bag3.jpg"],
+      "Beaded Bracelet Set": ["/images/bracelet1.jpg", "/images/bracelet2.jpg", "/images/bracelet3.jpg"],
+      "Silk Scarf": ["/images/scarf1.jpg", "/images/scarf2.jpg", "/images/scarf3.jpg"],
+      "Denim Cap": ["/images/cap1.jpg", "/images/cap2.jpg", "/images/cap3.jpg"],
+      "Statement Necklace": ["/images/necklace1.jpg", "/images/necklace2.jpg", "/images/necklace3.jpg"],
+      "Canvas Tote Bag": ["/images/totebag1.jpg", "/images/totebag2.jpg", "/images/totebag3.jpg"],
+      "Matte Lipstick Set": ["/images/lipstick1.jpg", "/images/lipstick2.jpg", "/images/lipstick3.jpg"],
+      "Vitamin C Serum": ["/images/serum1.jpg", "/images/serum2.jpg", "/images/serum3.jpg"],
+      "Hair Straightener": ["/images/straightener1.jpg", "/images/straightener2.jpg", "/images/straightener3.jpg"],
+      "Facial Roller": ["/images/roller1.jpg", "/images/roller2.jpg", "/images/roller3.jpg"],
+      "Makeup Brush Set": ["/images/brush1.jpg", "/images/brush2.jpg", "/images/brush3.jpg"],
+      "Aloe Vera Gel": ["/images/aloe1.jpg", "/images/aloe2.jpg", "/images/aloe3.jpg"],
+      "Nail Art Kit": ["/images/nail1.jpg", "/images/nail2.jpg", "/images/nail3.jpg"],
+      "Perfume Mist 50ml": ["/images/perfume1.jpg", "/images/perfume2.jpg", "/images/perfume3.jpg"],
+      "Charcoal Face Mask": ["/images/mask1.jpg", "/images/mask2.jpg", "/images/mask3.jpg"],
+      "Non-Stick Pan Set": ["/images/pan1.jpg", "/images/pan2.jpg", "/images/pan3.jpg"],
+      "Electric Kettle": ["/images/kettle1.jpg", "/images/kettle2.jpg", "/images/kettle3.jpg"],
+      "Knife Set Pro": ["/images/knife1.jpg", "/images/knife2.jpg", "/images/knife3.jpg"],
+      "Glass Storage Containers": ["/images/storage1.jpg", "/images/storage2.jpg", "/images/storage3.jpg"],
+      "Wall Art Canvas Set": ["/images/wallart1.jpg", "/images/wallart2.jpg", "/images/wallart3.jpg"],
+      "Ceramic Vase": ["/images/vase1.jpg", "/images/vase2.jpg", "/images/vase3.jpg"],
+      "Scented Candle Trio": ["/images/candle1.jpg", "/images/candle2.jpg", "/images/candle3.jpg"],
+      "Fairy Light Curtain": ["/images/fairylight1.jpg", "/images/fairylight2.jpg", "/images/fairylight3.jpg"],
+      "Magnetic Phone Mount": ["/images/mount1.jpg", "/images/mount2.jpg", "/images/mount3.jpg"],
+      "Posture Corrector": ["/images/posture1.jpg", "/images/posture2.jpg", "/images/posture3.jpg"],
+      "LED Galaxy Projector": ["/images/galaxy1.jpg", "/images/galaxy2.jpg", "/images/galaxy3.jpg"],
+      "Mini Handheld Fan": ["/images/fan1.jpg", "/images/fan2.jpg", "/images/fan3.jpg"],
+      "Travel Neck Pillow": ["/images/pillow1.jpg", "/images/pillow2.jpg", "/images/pillow3.jpg"],
+      "Car Organizer Box": ["/images/carbox1.jpg", "/images/carbox2.jpg", "/images/carbox3.jpg"],
+    };
+    const realImgs = realImages[item];
+    const reviews = Array.from({ length: numReviews }, (_, ri) => ({
+      name: REVIEW_NAMES[Math.floor(seededRand(seed + ri * 7) * REVIEW_NAMES.length)],
+      text: REVIEW_TEXTS[Math.floor(seededRand(seed + ri * 11) * REVIEW_TEXTS.length)],
+      stars: Math.max(3, Math.min(5, Math.round(3 + seededRand(seed + ri * 13) * 2))),
+    }));
+    PRODUCTS.push({
+      id: pid++,
+      name: item,
+      category: cat.name,
+      price,
+      originalPrice: Math.round(price * 1.35),
+      rating: parseFloat(rating),
+      reviewCount,
+      reviews,
+      img: realImgs ? realImgs[0] : `https://picsum.photos/seed/neoshop${seed}/600/600`,
+      img2: realImgs ? (realImgs[1] || realImgs[0]) : `https://picsum.photos/seed/neoshop${seed}b/600/600`,
+      img3: realImgs ? (realImgs[2] || realImgs[0]) : `https://picsum.photos/seed/neoshop${seed}c/600/600`,
+      description: `Premium quality ${item.toLowerCase()} designed for everyday use. Durable materials, modern design, and built to last. Perfect addition to your ${cat.name.toLowerCase()} collection.`,
+    });
+  });
+});
+
+function Stars({ rating, size = 14 }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          size={size}
+          className={s <= Math.round(rating) ? "fill-amber-400 text-amber-400" : "text-gray-300"}
+        />
+      ))}
+    </div>
+  );
+}
+
+function ProductCard({ p, onOpen, onAdd }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 group cursor-pointer flex flex-col">
+      <div className="relative overflow-hidden aspect-square bg-gray-50" onClick={() => onOpen(p)}>
+        <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+        <span className="absolute top-3 left-3 bg-emerald-500 text-white text-xs font-semibold px-2 py-1 rounded-full">
+          {Math.round((1 - p.price / p.originalPrice) * 100)}% OFF
+        </span>
+      </div>
+      <div className="p-4 flex flex-col gap-1.5 flex-1">
+        <p className="text-xs text-cyan-600 font-medium">{p.category}</p>
+        <h3 onClick={() => onOpen(p)} className="font-semibold text-gray-800 text-sm leading-snug line-clamp-2 hover:text-emerald-600">{p.name}</h3>
+        <div className="flex items-center gap-1">
+          <Stars rating={p.rating} />
+          <span className="text-xs text-gray-400">({p.reviewCount})</span>
+        </div>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-lg font-bold text-gray-900">Rs {p.price.toLocaleString()}</span>
+          <span className="text-xs text-gray-400 line-through">Rs {p.originalPrice.toLocaleString()}</span>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); onAdd(p); }}
+          className="mt-2 w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-sm font-semibold py-2 rounded-xl hover:opacity-90 transition flex items-center justify-center gap-2"
+        >
+          <ShoppingCart size={15} /> Add to Cart
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export default function NeoShop() {
+  const [view, setView] = useState("home"); // home, product, cart, checkout, tracking, confirmed
+  const [activeCategory, setActiveCategory] = useState(null);
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [cart, setCart] = useState([]); // {id, qty}
+  const [cartOpen, setCartOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [toast, setToast] = useState("");
+  const [orders, setOrders] = useState([]);
+  const [trackingId, setTrackingId] = useState("");
+  const [trackingResult, setTrackingResult] = useState(null);
+  const [lastOrder, setLastOrder] = useState(null);
+  const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", payment: "COD" });
+
+  const showToast = (msg) => {
+    setToast(msg);
+    setTimeout(() => setToast(""), 2000);
+  };
+
+  const addToCart = (p) => {
+    setCart((c) => {
+      const existing = c.find((i) => i.id === p.id);
+      if (existing) return c.map((i) => (i.id === p.id ? { ...i, qty: i.qty + 1 } : i));
+      return [...c, { id: p.id, qty: 1 }];
+    });
+    showToast(`Added "${p.name}" to cart`);
+  };
+
+  const updateQty = (id, delta) => {
+    setCart((c) =>
+      c
+        .map((i) => (i.id === id ? { ...i, qty: Math.max(0, i.qty + delta) } : i))
+        .filter((i) => i.qty > 0)
+    );
+  };
+
+  const removeFromCart = (id) => setCart((c) => c.filter((i) => i.id !== id));
+
+  const cartDetails = useMemo(
+    () =>
+      cart.map((i) => ({ ...i, product: PRODUCTS.find((p) => p.id === i.id) })).filter((i) => i.product),
+    [cart]
+  );
+  const cartTotal = cartDetails.reduce((sum, i) => sum + i.product.price * i.qty, 0);
+  const grandTotal = cartTotal + (cartDetails.length > 0 ? DELIVERY_CHARGE : 0);
+  const cartCount = cart.reduce((sum, i) => sum + i.qty, 0);
+
+  const filteredProducts = useMemo(() => {
+    let list = PRODUCTS;
+    if (activeCategory) list = list.filter((p) => p.category === activeCategory);
+    if (search.trim()) list = list.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()));
+    return list;
+  }, [activeCategory, search]);
+
+  const openProduct = (p) => {
+    setSelectedProduct(p);
+    setView("product");
+  };
+
+  const goHome = () => {
+    setView("home");
+    setActiveCategory(null);
+    setSelectedProduct(null);
+  };
+
+  const placeOrder = (e) => {
+    e.preventDefault();
+    if (!form.name || !form.phone || !form.address || !form.city) {
+      showToast("Please fill all required fields");
+      return;
+    }
+    const orderId = "NS" + Math.floor(100000 + Math.random() * 900000);
+    const order = {
+      id: orderId,
+      ...form,
+      items: cartDetails.map((i) => ({ name: i.product.name, qty: i.qty, price: i.product.price })),
+      subtotal: cartTotal,
+      deliveryCharge: DELIVERY_CHARGE,
+      total: grandTotal,
+      status: "Processing",
+      date: new Date().toLocaleString(),
+    };
+    setOrders((o) => [...o, order]);
+    setLastOrder(order);
+
+    const productLines = order.items.map((i) => `- ${i.name} x${i.qty} (Rs ${(i.price * i.qty).toLocaleString()})`).join("\n");
+    const message =
+      `🛍️ *New Order Received - ${BRAND}*\n\n` +
+      `*Order ID:* ${orderId}\n` +
+      `*Name:* ${form.name}\n` +
+      `*Phone:* ${form.phone}\n` +
+      `*Address:* ${form.address}, ${form.city}\n` +
+      `*Payment Method:* ${form.payment}\n\n` +
+      `*Products:*\n${productLines}\n\n` +
+      `*Subtotal:* Rs ${cartTotal.toLocaleString()}\n` +
+      `*Delivery Charges:* Rs ${DELIVERY_CHARGE.toLocaleString()}\n` +
+      `*Total:* Rs ${grandTotal.toLocaleString()}\n` +
+      `*Status:* Pending`;
+
+    const waLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+    window.open(waLink, "_blank");
+
+    setCart([]);
+    setView("confirmed");
+  };
+
+  const trackOrder = () => {
+    const found = orders.find((o) => o.id.toLowerCase() === trackingId.trim().toLowerCase());
+    setTrackingResult(found || "not_found");
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
+      {/* Top bar */}
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-4">
+          <button onClick={goHome} className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 flex items-center justify-center text-white font-bold">N</div>
+            <span className="font-extrabold text-lg tracking-tight">{BRAND}</span>
+          </button>
+          <div className="flex-1 hidden sm:flex items-center bg-gray-100 rounded-full px-4 py-2">
+            <Search size={16} className="text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setView("home"); setActiveCategory(null); }}
+              placeholder="Search products..."
+              className="bg-transparent outline-none text-sm ml-2 w-full"
+            />
+          </div>
+          <button onClick={() => setView("tracking")} className="hidden sm:flex items-center gap-1 text-sm font-medium text-gray-600 hover:text-emerald-600">
+            <Truck size={16} /> Track Order
+          </button>
+          <button onClick={() => setCartOpen(true)} className="relative">
+            <ShoppingCart size={22} />
+            {cartCount > 0 && (
+              <span className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+        {/* category strip */}
+        <div className="max-w-6xl mx-auto px-4 pb-2 flex gap-2 overflow-x-auto">
+          <button
+            onClick={() => { setActiveCategory(null); setView("home"); }}
+            className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap ${!activeCategory ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"}`}
+          >
+            All
+          </button>
+          {CATEGORIES.map((c) => (
+            <button
+              key={c.name}
+              onClick={() => { setActiveCategory(c.name); setView("home"); }}
+              className={`text-xs font-medium px-3 py-1.5 rounded-full whitespace-nowrap ${activeCategory === c.name ? "bg-emerald-500 text-white" : "bg-gray-100 text-gray-600"}`}
+            >
+              {c.emoji} {c.name}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {toast && (
+        <div className="fixed top-20 right-4 z-50 bg-gray-900 text-white text-sm px-4 py-2 rounded-xl shadow-lg animate-pulse">
+          {toast}
+        </div>
+      )}
+
+      {/* HOME VIEW */}
+      {view === "home" && (
+        <main className="max-w-6xl mx-auto px-4 pb-16">
+          {!activeCategory && !search && (
+            <div className="relative rounded-3xl overflow-hidden mt-6 mb-10 bg-gradient-to-r from-emerald-600 via-cyan-600 to-emerald-500 text-white">
+              <div className="px-8 py-14 md:py-20 max-w-xl relative z-10">
+                <p className="text-emerald-100 font-medium mb-2 tracking-wide">SUMMER COLLECTION 2026</p>
+                <h1 className="text-3xl md:text-5xl font-extrabold leading-tight mb-4">Shop Smarter.<br />Live Better.</h1>
+                <p className="text-emerald-50 mb-6">Premium gadgets, fashion, beauty & home essentials — delivered to your door.</p>
+                <button onClick={() => document.getElementById("grid")?.scrollIntoView({ behavior: "smooth" })} className="bg-white text-emerald-600 font-semibold px-6 py-3 rounded-full hover:bg-emerald-50 transition">
+                  Shop Now
+                </button>
+              </div>
+              <div className="absolute right-0 top-0 h-full w-1/3 opacity-30 hidden md:block">
+                <img src="https://picsum.photos/seed/neoshophero/500/500" className="w-full h-full object-cover" alt="" />
+              </div>
+            </div>
+          )}
+
+          <div id="grid" className="flex items-center justify-between mb-5 pt-4">
+            <h2 className="text-xl font-bold">
+              {search ? `Results for "${search}"` : activeCategory || "Featured Products"}
+            </h2>
+            <span className="text-sm text-gray-500">{filteredProducts.length} items</span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+            {filteredProducts.map((p) => (
+              <ProductCard key={p.id} p={p} onOpen={openProduct} onAdd={addToCart} />
+            ))}
+          </div>
+          {filteredProducts.length === 0 && (
+            <p className="text-center text-gray-400 py-20">No products found.</p>
+          )}
+        </main>
+      )}
+
+      {/* PRODUCT DETAIL */}
+      {view === "product" && selectedProduct && (
+        <main className="max-w-5xl mx-auto px-4 pb-16">
+          <button onClick={goHome} className="flex items-center gap-1 text-sm text-gray-500 my-4 hover:text-emerald-600">
+            <ChevronLeft size={16} /> Back to shop
+          </button>
+          <div className="grid md:grid-cols-2 gap-8">
+            <div>
+              <div className="aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-3">
+                <img src={selectedProduct.img} className="w-full h-full object-cover" alt={selectedProduct.name} />
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {[selectedProduct.img, selectedProduct.img2, selectedProduct.img3].map((im, i) => (
+                  <div key={i} className="aspect-square rounded-xl overflow-hidden bg-gray-100">
+                    <img src={im} className="w-full h-full object-cover" alt="" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-cyan-600 font-medium mb-1">{selectedProduct.category}</p>
+              <h1 className="text-2xl font-bold mb-2">{selectedProduct.name}</h1>
+              <div className="flex items-center gap-2 mb-3">
+                <Stars rating={selectedProduct.rating} size={16} />
+                <span className="text-sm text-gray-500">{selectedProduct.rating} ({selectedProduct.reviewCount} reviews)</span>
+              </div>
+              <div className="flex items-baseline gap-3 mb-4">
+                <span className="text-3xl font-bold">Rs {selectedProduct.price.toLocaleString()}</span>
+                <span className="text-gray-400 line-through">Rs {selectedProduct.originalPrice.toLocaleString()}</span>
+                <span className="text-emerald-600 font-semibold text-sm">{Math.round((1 - selectedProduct.price / selectedProduct.originalPrice) * 100)}% off</span>
+              </div>
+              <p className="text-gray-600 mb-6 leading-relaxed">{selectedProduct.description}</p>
+              <button
+                onClick={() => addToCart(selectedProduct)}
+                className="w-full md:w-auto bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold px-8 py-3 rounded-xl hover:opacity-90 flex items-center justify-center gap-2"
+              >
+                <ShoppingCart size={18} /> Add to Cart
+              </button>
+
+              <div className="mt-10">
+                <h3 className="font-bold mb-4">Customer Reviews</h3>
+                <div className="space-y-4">
+                  {selectedProduct.reviews.map((r, i) => (
+                    <div key={i} className="bg-white border border-gray-100 rounded-xl p-4">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-sm">{r.name}</span>
+                        <Stars rating={r.stars} size={13} />
+                      </div>
+                      <p className="text-sm text-gray-600">{r.text}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
+
+      {/* TRACKING VIEW */}
+      {view === "tracking" && (
+        <main className="max-w-md mx-auto px-4 py-16">
+          <button onClick={goHome} className="flex items-center gap-1 text-sm text-gray-500 mb-6 hover:text-emerald-600">
+            <ChevronLeft size={16} /> Back to shop
+          </button>
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2"><Package size={22} /> Track Your Order</h2>
+          <div className="flex gap-2 mb-4">
+            <input
+              value={trackingId}
+              onChange={(e) => setTrackingId(e.target.value)}
+              placeholder="Enter Order ID e.g. NS123456"
+              className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:border-emerald-400"
+            />
+            <button onClick={trackOrder} className="bg-emerald-500 text-white px-5 rounded-xl font-medium">Track</button>
+          </div>
+          {trackingResult === "not_found" && <p className="text-sm text-red-500">No order found with that ID (note: orders only persist for this session demo).</p>}
+          {trackingResult && trackingResult !== "not_found" && (
+            <div className="bg-white border border-gray-100 rounded-xl p-5 mt-4">
+              <p className="font-semibold mb-1">Order {trackingResult.id}</p>
+              <p className="text-sm text-gray-500 mb-3">{trackingResult.date}</p>
+              <div className="flex justify-between text-sm text-gray-600 mb-1">
+                <span>Subtotal</span>
+                <span>Rs {(trackingResult.subtotal ?? trackingResult.total).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 mb-3">
+                <span>Delivery</span>
+                <span>Rs {(trackingResult.deliveryCharge ?? 0).toLocaleString()}</span>
+              </div>
+              <div className="flex justify-between font-bold mb-3 border-t border-gray-100 pt-2">
+                <span>Total</span>
+                <span>Rs {trackingResult.total.toLocaleString()}</span>
+              </div>
+              <div className="flex items-center gap-2 text-emerald-600 font-medium text-sm">
+                <CheckCircle2 size={16} /> Status: {trackingResult.status}
+              </div>
+            </div>
+          )}
+        </main>
+      )}
+
+      {/* CONFIRMATION VIEW */}
+      {view === "confirmed" && lastOrder && (
+        <main className="max-w-md mx-auto px-4 py-20 text-center">
+          <CheckCircle2 size={56} className="text-emerald-500 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold mb-2">Order Placed!</h2>
+          <p className="text-gray-500 mb-1">Your order ID is</p>
+          <p className="text-xl font-bold text-emerald-600 mb-6">{lastOrder.id}</p>
+          <p className="text-sm text-gray-500 mb-6">We've opened WhatsApp with your order details ready to send. If it didn't open, allow popups and try again.</p>
+          <button onClick={goHome} className="bg-gray-900 text-white px-6 py-3 rounded-xl font-medium">Continue Shopping</button>
+        </main>
+      )}
+
+      {/* CART DRAWER */}
+      {cartOpen && (
+        <div className="fixed inset-0 z-40 flex justify-end">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setCartOpen(false)} />
+          <div className="relative bg-white w-full max-w-sm h-full overflow-y-auto shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
+              <h3 className="font-bold">Your Cart ({cartCount})</h3>
+              <button onClick={() => setCartOpen(false)}><X size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {cartDetails.length === 0 && <p className="text-gray-400 text-sm text-center mt-10">Your cart is empty.</p>}
+              {cartDetails.map((i) => (
+                <div key={i.id} className="flex gap-3">
+                  <img src={i.product.img} className="w-16 h-16 rounded-lg object-cover" alt="" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium leading-snug">{i.product.name}</p>
+                    <p className="text-sm text-gray-500">Rs {i.product.price.toLocaleString()}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <button onClick={() => updateQty(i.id, -1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><Minus size={12} /></button>
+                      <span className="text-sm w-5 text-center">{i.qty}</span>
+                      <button onClick={() => updateQty(i.id, 1)} className="w-6 h-6 rounded bg-gray-100 flex items-center justify-center"><Plus size={12} /></button>
+                      <button onClick={() => removeFromCart(i.id)} className="text-xs text-red-400 ml-2">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {cartDetails.length > 0 && (
+              <div className="p-4 border-t border-gray-100">
+                <div className="flex justify-between mb-3 font-bold">
+                  <span>Total</span>
+                  <span>Rs {cartTotal.toLocaleString()}</span>
+                </div>
+                <button
+                  onClick={() => { setCartOpen(false); setView("checkout"); }}
+                  className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold py-3 rounded-xl"
+                >
+                  Checkout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* CHECKOUT VIEW */}
+      {view === "checkout" && (
+        <main className="max-w-2xl mx-auto px-4 py-10">
+          <button onClick={() => setView("home")} className="flex items-center gap-1 text-sm text-gray-500 mb-6 hover:text-emerald-600">
+            <ChevronLeft size={16} /> Back to shop
+          </button>
+          <h2 className="text-2xl font-bold mb-6">Checkout</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="md:col-span-2 space-y-4">
+              <div>
+                <label className="text-sm font-medium">Full Name *</label>
+                <input required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 mt-1 outline-none focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Phone Number *</label>
+                <input required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="03XXXXXXXXX" className="w-full border border-gray-200 rounded-xl px-4 py-2.5 mt-1 outline-none focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Address *</label>
+                <input required value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 mt-1 outline-none focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-sm font-medium">City *</label>
+                <input required value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })} className="w-full border border-gray-200 rounded-xl px-4 py-2.5 mt-1 outline-none focus:border-emerald-400" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">Payment Method</label>
+                <div className="space-y-2">
+                  {["COD", "Easypaisa", "JazzCash", "Bank Transfer"].map((m) => (
+                    <label key={m} className={`flex items-center gap-2 border rounded-xl px-4 py-2.5 cursor-pointer ${form.payment === m ? "border-emerald-400 bg-emerald-50" : "border-gray-200"}`}>
+                      <input type="radio" name="payment" checked={form.payment === m} onChange={() => setForm({ ...form, payment: m })} />
+                      <span className="text-sm">{m === "COD" ? "Cash on Delivery" : m}</span>
+                    </label>
+                  ))}
+                </div>
+                {form.payment === "Easypaisa" && <p className="text-xs text-gray-500 mt-2">Send payment to Easypaisa: 03XX-XXXXXXX (NeoShop Official). Share screenshot on WhatsApp after ordering.</p>}
+                {form.payment === "JazzCash" && <p className="text-xs text-gray-500 mt-2">Send payment to JazzCash: 03XX-XXXXXXX (NeoShop Official). Share screenshot on WhatsApp after ordering.</p>}
+                {form.payment === "Bank Transfer" && <p className="text-xs text-gray-500 mt-2">Bank: Meezan Bank • Account Title: NeoShop • Account No: XXXX-XXXXXXX-XXX</p>}
+              </div>
+              <button type="button" onClick={placeOrder} className="w-full bg-gradient-to-r from-emerald-500 to-cyan-500 text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2">
+                <MessageCircle size={18} /> Place Order via WhatsApp
+              </button>
+            </div>
+            <div className="bg-white border border-gray-100 rounded-xl p-4 h-fit">
+              <h3 className="font-semibold mb-3">Order Summary</h3>
+              {cartDetails.map((i) => (
+                <div key={i.id} className="flex justify-between text-sm mb-2">
+                  <span className="text-gray-600">{i.product.name} x{i.qty}</span>
+                  <span>Rs {(i.product.price * i.qty).toLocaleString()}</span>
+                </div>
+              ))}
+              <div className="border-t border-gray-100 mt-3 pt-3 space-y-1.5">
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Subtotal</span>
+                  <span>Rs {cartTotal.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Delivery Charges</span>
+                  <span>Rs {DELIVERY_CHARGE.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between font-bold text-base pt-1.5 border-t border-gray-100">
+                  <span>Total</span>
+                  <span>Rs {grandTotal.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+      )}
+
+      <footer className="bg-gray-900 text-gray-400 text-sm py-8 text-center mt-10">
+        © 2026 {BRAND}. Demo storefront — built for preview purposes.
+      </footer>
+    </div>
+  );
+}
